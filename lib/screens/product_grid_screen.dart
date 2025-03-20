@@ -1,8 +1,7 @@
-// product_grid_screen.dart
-
 import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../services/mongodb_service.dart';
+import 'login_screen.dart';
 
 class ProductGridScreen extends StatefulWidget {
   @override
@@ -11,29 +10,30 @@ class ProductGridScreen extends StatefulWidget {
 
 class _ProductGridScreenState extends State<ProductGridScreen> {
   List<Product> products = [];
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _idController;
+  late TextEditingController _typeController;
+  late TextEditingController _priceController;
+  late TextEditingController _imageUrlController;
 
   @override
   void initState() {
     super.initState();
+    _idController = TextEditingController();
+    _typeController = TextEditingController();
+    _priceController = TextEditingController();
+    _imageUrlController = TextEditingController();
     _loadProducts();
   }
 
   void _loadProducts() async {
     final productsList = await MongoDBService.getProducts();
-    print('Sản phẩm lấy được: $productsList'); // Debug dữ liệu
     setState(() {
       products = productsList.map((e) => Product.fromMap(e)).toList();
     });
   }
 
-
   void _showAddProductDialog() {
-    final _formKey = GlobalKey<FormState>();
-    final _idController = TextEditingController();
-    final _typeController = TextEditingController();
-    final _priceController = TextEditingController();
-    final _imageUrlController = TextEditingController();
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -47,43 +47,27 @@ class _ProductGridScreenState extends State<ProductGridScreen> {
                 TextFormField(
                   controller: _idController,
                   decoration: InputDecoration(labelText: 'ID Sản phẩm'),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Vui lòng nhập ID sản phẩm';
-                    }
-                    return null;
-                  },
+                  validator: (value) =>
+                  value?.isEmpty ?? true ? 'Vui lòng nhập ID sản phẩm' : null,
                 ),
                 TextFormField(
                   controller: _typeController,
                   decoration: InputDecoration(labelText: 'Loại sản phẩm'),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Vui lòng nhập loại sản phẩm';
-                    }
-                    return null;
-                  },
+                  validator: (value) =>
+                  value?.isEmpty ?? true ? 'Vui lòng nhập loại sản phẩm' : null,
                 ),
                 TextFormField(
                   controller: _priceController,
                   decoration: InputDecoration(labelText: 'Giá'),
                   keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Vui lòng nhập giá';
-                    }
-                    return null;
-                  },
+                  validator: (value) =>
+                  value?.isEmpty ?? true ? 'Vui lòng nhập giá' : null,
                 ),
                 TextFormField(
                   controller: _imageUrlController,
                   decoration: InputDecoration(labelText: 'URL Hình ảnh'),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Vui lòng nhập URL hình ảnh';
-                    }
-                    return null;
-                  },
+                  validator: (value) =>
+                  value?.isEmpty ?? true ? 'Vui lòng nhập URL hình ảnh' : null,
                 ),
               ],
             ),
@@ -103,11 +87,11 @@ class _ProductGridScreenState extends State<ProductGridScreen> {
                   gia: double.parse(_priceController.text),
                   hinhanh: _imageUrlController.text,
                 );
-
                 final success = await MongoDBService.insertProduct(product);
                 if (success) {
-                  Navigator.pop(context);
                   _loadProducts();
+                  Navigator.pop(context);
+                  _clearForm();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Thêm sản phẩm thành công')),
                   );
@@ -121,6 +105,114 @@ class _ProductGridScreenState extends State<ProductGridScreen> {
     );
   }
 
+  void _showEditProductDialog(Product product) {
+    _idController.text = product.idsanpham;
+    _typeController.text = product.loaisp;
+    _priceController.text = product.gia.toString();
+    _imageUrlController.text = product.hinhanh;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Sửa sản phẩm'),
+        content: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _typeController,
+                  decoration: InputDecoration(labelText: 'Loại sản phẩm'),
+                  validator: (value) =>
+                  value?.isEmpty ?? true ? 'Vui lòng nhập loại sản phẩm' : null,
+                ),
+                TextFormField(
+                  controller: _priceController,
+                  decoration: InputDecoration(labelText: 'Giá'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) =>
+                  value?.isEmpty ?? true ? 'Vui lòng nhập giá' : null,
+                ),
+                TextFormField(
+                  controller: _imageUrlController,
+                  decoration: InputDecoration(labelText: 'URL Hình ảnh'),
+                  validator: (value) =>
+                  value?.isEmpty ?? true ? 'Vui lòng nhập URL hình ảnh' : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (_formKey.currentState!.validate()) {
+                final updatedProduct = Product(
+                  idsanpham: product.idsanpham,
+                  loaisp: _typeController.text,
+                  gia: double.parse(_priceController.text),
+                  hinhanh: _imageUrlController.text,
+                );
+                final success = await MongoDBService.updateProduct(updatedProduct);
+                if (success) {
+                  _loadProducts();
+                  Navigator.pop(context);
+                  _clearForm();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Cập nhật sản phẩm thành công')),
+                  );
+                }
+              }
+            },
+            child: Text('Cập nhật'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmDialog(String productId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Xác nhận xóa'),
+        content: Text('Bạn có chắc muốn xóa sản phẩm này?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final success = await MongoDBService.deleteProduct(productId);
+              if (success) {
+                _loadProducts();
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Xóa sản phẩm thành công')),
+                );
+              }
+            },
+            child: Text('Xóa'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _clearForm() {
+    _idController.clear();
+    _typeController.clear();
+    _priceController.clear();
+    _imageUrlController.clear();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,65 +220,101 @@ class _ProductGridScreenState extends State<ProductGridScreen> {
         title: Text('Danh sách sản phẩm'),
         actions: [
           IconButton(
-            icon: Icon(Icons.add),
-            onPressed: _showAddProductDialog,
+            icon: Icon(Icons.logout),
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => LoginScreen()),
+              );
+            },
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddProductDialog,
+        child: Icon(Icons.add),
       ),
       body: GridView.builder(
         padding: EdgeInsets.all(16),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.75,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
+          childAspectRatio: 0.75,
         ),
         itemCount: products.length,
         itemBuilder: (context, index) {
           final product = products[index];
           return Card(
             elevation: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
+            child: InkWell(
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (context) => Container(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading: Icon(Icons.edit),
+                          title: Text('Sửa sản phẩm'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _showEditProductDialog(product);
+                          },
+                        ),
+                        ListTile(
+                          leading: Icon(Icons.delete, color: Colors.red),
+                          title: Text('Xóa sản phẩm',
+                              style: TextStyle(color: Colors.red)),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _showDeleteConfirmDialog(product.idsanpham);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
                     child: Image.network(
                       product.hinhanh,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(Icons.broken_image, size: 50); // Hiển thị icon lỗi nếu ảnh không tải được
-                      },
+                      width: double.infinity,
                     ),
                   ),
-                ),
-                Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        product.loaisp,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                  Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.loaisp,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        '${product.gia.toStringAsFixed(0)} VNĐ',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.blue,
+                        SizedBox(height: 4),
+                        Text(
+                          '${product.gia.toStringAsFixed(0)} đ',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.blue,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
