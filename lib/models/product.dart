@@ -1,8 +1,10 @@
+// product.dart
+import 'dart:convert';
 class Product {
   final String idsanpham;
   final String loaisp;
   final double gia;
-  final String hinhanh;
+  final String hinhanh; // Will store base64 image data
 
   Product({
     required this.idsanpham,
@@ -22,11 +24,10 @@ class Product {
 
   factory Product.fromMap(Map<String, dynamic> map) {
     return Product(
-      idsanpham: map['idsanpham'] ?? '',  // Kiểm tra có null không
+      idsanpham: map['idsanpham'] ?? '',
       loaisp: map['loaisp'] ?? '',
       gia: map['gia'] != null ? map['gia'].toDouble() : 0.0,
       hinhanh: map['hinhanh'] ?? '',
     );
   }
-
 }
